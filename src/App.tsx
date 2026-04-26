@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
-import Dashboard from './components/Dashboard/Dashboard';
-import NotesView from './components/Notes/NotesView';
-import FlashcardsView from './components/Flashcards/FlashcardsView';
-import QuizView from './components/Quiz/QuizView';
-import SettingsView from './components/Settings/SettingsView';
 import { useStore } from './store/useStore';
+
+const Dashboard = lazy(() => import('./components/Dashboard/Dashboard'));
+const NotesView = lazy(() => import('./components/Notes/NotesView'));
+const FlashcardsView = lazy(() => import('./components/Flashcards/FlashcardsView'));
+const QuizView = lazy(() => import('./components/Quiz/QuizView'));
+const SettingsView = lazy(() => import('./components/Settings/SettingsView'));
 
 function App() {
   const { currentView, theme } = useStore();
@@ -43,7 +44,29 @@ function App() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto">
-          {renderCurrentView()}
+          <Suspense
+            fallback={
+              <div className="p-6">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-12 w-56 rounded-2xl bg-gray-200 dark:bg-gray-800" />
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {[...Array(4)].map((_, index) => (
+                      <div
+                        key={index}
+                        className="h-32 rounded-2xl bg-white dark:bg-gray-800 shadow-sm"
+                      />
+                    ))}
+                  </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="h-72 rounded-2xl bg-white dark:bg-gray-800 shadow-sm" />
+                    <div className="h-72 rounded-2xl bg-white dark:bg-gray-800 shadow-sm" />
+                  </div>
+                </div>
+              </div>
+            }
+          >
+            {renderCurrentView()}
+          </Suspense>
         </main>
       </div>
     </div>

@@ -1,252 +1,331 @@
 import React from 'react';
-import { 
-  BookOpen, 
-  Brain, 
-  Target, 
+import {
+  ArrowRight,
+  BookOpen,
+  Brain,
+  Clock3,
+  Layers3,
+  Target,
   TrendingUp,
-  Clock,
-  Award,
-  Calendar,
-  BarChart3
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { useStore } from '../../store/useStore';
-import { format, subDays, isAfter } from 'date-fns';
+import {
+  getAccuracy,
+  getAverageScore,
+  getDueFlashcards,
+  getStudyStreak,
+} from '../../utils/appData';
 
 const Dashboard = () => {
-  const { notes, flashcards, studySessions } = useStore();
+  const {
+    notes,
+    flashcards,
+    studySessions,
+    addNote,
+    setCurrentNote,
+    setCurrentView,
+  } = useStore();
 
-  // Calculate statistics
-  const totalNotes = notes.length;
-  const totalFlashcards = flashcards.length;
-  const totalSessions = studySessions.length;
-  const totalWordCount = notes.reduce((sum, note) => sum + note.wordCount, 0);
-  
-  // Recent activity
-  const recentNotes = notes
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5);
-  
-  const recentSessions = studySessions
-    .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
-    .slice(0, 3);
+  const dueFlashcards = getDueFlashcards(flashcards);
+  const recentNotes = [...notes]
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, 4);
+  const recentSessions = [...studySessions]
+    .sort(
+      (left, right) =>
+        new Date(right.completedAt).getTime() - new Date(left.completedAt).getTime(),
+    )
+    .slice(0, 4);
 
-  // Due flashcards
-  const dueFlashcards = flashcards.filter(card => 
-    isAfter(new Date(), new Date(card.nextReview))
+  const totalCorrectAnswers = studySessions.reduce(
+    (total, session) => total + (session.correctAnswers || 0),
+    0,
   );
+  const totalAnswers = studySessions.reduce(
+    (total, session) => total + session.flashcards.length,
+    0,
+  );
+  const studyAccuracy = getAccuracy(totalCorrectAnswers, totalAnswers);
+  const quizAverage = getAverageScore(studySessions, 'quiz');
+  const studyStreak = getStudyStreak(studySessions);
+  const linkedNotes = new Set(
+    flashcards.map((flashcard) => flashcard.noteId).filter(Boolean),
+  ).size;
+  const noteCoverage = notes.length ? Math.round((linkedNotes / notes.length) * 100) : 0;
+
+  const handleCreateNote = () => {
+    const newNote = addNote({
+      title: 'Untitled Note',
+      content: '',
+      tags: [],
+    });
+
+    setCurrentNote(newNote);
+    setCurrentView('notes');
+  };
 
   const stats = [
     {
-      label: 'Total Notes',
-      value: totalNotes,
+      label: 'Notes',
+      value: notes.length,
+      detail: `${linkedNotes} linked to flashcards`,
       icon: BookOpen,
-      color: 'bg-blue-500',
-      change: '+12%',
+      color: 'from-blue-500 to-blue-600',
     },
     {
-      label: 'Flashcards',
-      value: totalFlashcards,
+      label: 'Due Review',
+      value: dueFlashcards.length,
+      detail: dueFlashcards.length === 0 ? 'You are caught up' : 'Ready to study now',
       icon: Brain,
-      color: 'bg-purple-500',
-      change: '+8%',
+      color: 'from-orange-500 to-orange-600',
     },
     {
-      label: 'Study Sessions',
-      value: totalSessions,
+      label: 'Study Accuracy',
+      value: `${studyAccuracy}%`,
+      detail: `${studyStreak} day study streak`,
       icon: Target,
-      color: 'bg-green-500',
-      change: '+23%',
+      color: 'from-green-500 to-green-600',
     },
     {
-      label: 'Words Written',
-      value: totalWordCount.toLocaleString(),
+      label: 'Quiz Average',
+      value: `${quizAverage}%`,
+      detail: `${noteCoverage}% note coverage`,
       icon: TrendingUp,
-      color: 'bg-orange-500',
-      change: '+15%',
+      color: 'from-purple-500 to-purple-600',
     },
   ];
 
   return (
     <div className="p-6 space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome back to NeuroNotes!</h1>
-            <p className="text-blue-100 text-lg">
-              Ready to enhance your learning journey? You have {dueFlashcards.length} flashcards due for review.
+      <section className="rounded-3xl bg-gradient-to-r from-blue-600 via-blue-600 to-purple-600 p-8 text-white shadow-xl shadow-blue-500/15">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-blue-100 text-sm uppercase tracking-[0.2em]">Study cockpit</p>
+            <h1 className="text-3xl md:text-4xl font-bold mt-3">
+              Keep notes, cards, and review sessions moving together.
+            </h1>
+            <p className="text-blue-100 text-lg mt-3 max-w-xl">
+              {dueFlashcards.length > 0
+                ? `You have ${dueFlashcards.length} flashcard${dueFlashcards.length === 1 ? '' : 's'} ready for review, plus ${recentNotes.length} recently touched note${recentNotes.length === 1 ? '' : 's'}.`
+                : 'Your review queue is clear, so this is a good time to capture a new note or run a quiz.'}
             </p>
           </div>
-          <div className="hidden md:block">
-            <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center">
-              <Brain className="w-12 h-12" />
-            </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setCurrentView(dueFlashcards.length > 0 ? 'flashcards' : 'quiz')}
+              className="px-5 py-3 bg-white text-blue-700 rounded-2xl font-medium hover:bg-blue-50 transition-colors"
+            >
+              {dueFlashcards.length > 0 ? 'Review due cards' : 'Start a quiz'}
+            </button>
+            <button
+              onClick={handleCreateNote}
+              className="px-5 py-3 bg-white/15 hover:bg-white/20 rounded-2xl font-medium transition-colors border border-white/20"
+            >
+              Capture a note
+            </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
+      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {stats.map((stat) => {
           const Icon = stat.icon;
+
           return (
-            <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
+            <div
+              key={stat.label}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-200 dark:border-gray-700"
+            >
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{stat.value}</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    {stat.label}
+                  </p>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                    {stat.value}
+                  </p>
                 </div>
-                <div className={`p-3 rounded-xl ${stat.color}`}>
-                  <Icon className="w-6 h-6 text-white" />
+                <div
+                  className={`p-3 rounded-2xl bg-gradient-to-r ${stat.color} text-white shadow-lg`}
+                >
+                  <Icon className="w-5 h-5" />
                 </div>
               </div>
-              <div className="mt-4 flex items-center">
-                <span className="text-green-600 text-sm font-medium">{stat.change}</span>
-                <span className="text-gray-600 dark:text-gray-400 text-sm ml-2">vs last week</span>
-              </div>
+              <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">{stat.detail}</p>
             </div>
           );
         })}
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Notes */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
+      <section className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-6">
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Notes</h3>
-              <BookOpen className="w-5 h-5 text-gray-400" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Jump back into the notes you touched most recently.
+              </p>
             </div>
+            <button
+              onClick={() => setCurrentView('notes')}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+            >
+              Open notes
+            </button>
           </div>
+
           <div className="p-6">
             {recentNotes.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {recentNotes.map((note) => (
-                  <div key={note.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                  <button
+                    key={note.id}
+                    onClick={() => {
+                      setCurrentNote(note);
+                      setCurrentView('notes');
+                    }}
+                    className="w-full flex items-start justify-between gap-4 p-4 rounded-2xl hover:bg-gray-50 dark:hover:bg-gray-700/70 transition-colors text-left"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-white truncate">
                         {note.title}
-                      </h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {format(new Date(note.updatedAt), 'MMM d, HH:mm')} • {note.wordCount} words
                       </p>
-                      {note.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {note.tags.slice(0, 3).map((tag) => (
-                            <span key={tag} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        {note.content || 'Empty note ready for your next study session.'}
+                      </p>
                     </div>
-                  </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">{note.wordCount} words</p>
+                    </div>
+                  </button>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400">No notes yet. Create your first note!</p>
+              <div className="text-center py-10">
+                <BookOpen className="w-10 h-10 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 mb-4">
+                  No notes yet. Start with your first capture.
+                </p>
+                <button
+                  onClick={handleCreateNote}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors"
+                >
+                  Create note
+                </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Study Progress */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Study Progress</h3>
-              <BarChart3 className="w-5 h-5 text-gray-400" />
-            </div>
-          </div>
-          <div className="p-6">
-            {/* Due Flashcards */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Due for Review</span>
-                <span className="text-sm font-bold text-orange-600">{dueFlashcards.length}</span>
-              </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div 
-                  className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.min((dueFlashcards.length / Math.max(totalFlashcards, 1)) * 100, 100)}%` }}
-                ></div>
-              </div>
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Review Queue</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                The next cards that need attention.
+              </p>
             </div>
 
-            {/* Recent Sessions */}
-            <div>
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Recent Sessions</h4>
+            <div className="p-6">
+              {dueFlashcards.length > 0 ? (
+                <div className="space-y-3">
+                  {dueFlashcards.slice(0, 4).map((card) => (
+                    <button
+                      key={card.id}
+                      onClick={() => setCurrentView('flashcards')}
+                      className="w-full p-4 rounded-2xl bg-orange-50 dark:bg-orange-900/20 text-left hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {card.question}
+                          </p>
+                          <p className="text-sm text-orange-700 dark:text-orange-300 mt-2">
+                            Due now • {card.difficulty}
+                          </p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-orange-500 shrink-0 mt-1" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-gray-50 dark:bg-gray-700/60 p-5">
+                  <p className="font-medium text-gray-900 dark:text-white">Nothing overdue</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Your study queue is clear right now.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Session Activity
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Recent study and quiz sessions.
+              </p>
+            </div>
+
+            <div className="p-6">
               {recentSessions.length > 0 ? (
                 <div className="space-y-3">
                   {recentSessions.map((session) => (
-                    <div key={session.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div
+                      key={session.id}
+                      className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 dark:bg-gray-700/60"
+                    >
                       <div className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 flex items-center justify-center">
+                          {session.mode === 'quiz' ? (
+                            <Target className="w-5 h-5" />
+                          ) : (
+                            <Layers3 className="w-5 h-5" />
+                          )}
+                        </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {session.flashcards.length} cards
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {session.mode === 'quiz' ? 'Quiz session' : 'Study session'}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {format(new Date(session.completedAt), 'MMM d, HH:mm')}
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {session.correctAnswers} correct out of {session.flashcards.length}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-green-600">{session.score}%</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{Math.round(session.duration / 60)}m</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {session.score}%
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 inline-flex items-center space-x-1">
+                          <Clock3 className="w-3 h-3" />
+                          <span>
+                            {Math.max(1, Math.round(session.duration / 1000 / 60))} min
+                          </span>
+                        </p>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-4">
-                  <Target className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No study sessions yet</p>
+                <div className="rounded-2xl bg-gray-50 dark:bg-gray-700/60 p-5">
+                  <p className="font-medium text-gray-900 dark:text-white">No sessions yet</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Once you study or take a quiz, progress will show up here.
+                  </p>
                 </div>
               )}
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center space-x-3 p-4 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-xl transition-colors">
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900 dark:text-white">Create Note</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Start writing</p>
-            </div>
-          </button>
-          
-          <button className="flex items-center space-x-3 p-4 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-xl transition-colors">
-            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900 dark:text-white">Study Cards</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Review flashcards</p>
-            </div>
-          </button>
-          
-          <button className="flex items-center space-x-3 p-4 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-xl transition-colors">
-            <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-              <Target className="w-5 h-5 text-white" />
-            </div>
-            <div className="text-left">
-              <p className="font-medium text-gray-900 dark:text-white">Take Quiz</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Test knowledge</p>
-            </div>
-          </button>
-        </div>
-      </div>
+      </section>
     </div>
   );
 };

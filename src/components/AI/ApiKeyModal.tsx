@@ -32,8 +32,8 @@ const ApiKeyModal = ({ isOpen, onClose, onSuccess }: ApiKeyModalProps) => {
       
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Invalid API key. Please check and try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Invalid API key. Please check and try again.');
       aiService.removeApiKey();
     } finally {
       setIsLoading(false);

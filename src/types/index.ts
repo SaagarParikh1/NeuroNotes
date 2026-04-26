@@ -1,3 +1,10 @@
+export type FlashcardDifficulty = 'easy' | 'medium' | 'hard';
+export type AppView = 'dashboard' | 'notes' | 'flashcards' | 'quiz' | 'settings';
+export type ThemeMode = 'light' | 'dark';
+export type StudySessionMode = 'study' | 'quiz';
+export type FontSize = 'small' | 'medium' | 'large';
+export type EditorFont = 'system' | 'mono' | 'serif';
+
 export interface Note {
   id: string;
   title: string;
@@ -22,8 +29,8 @@ export interface Flashcard {
   id: string;
   question: string;
   answer: string;
-  noteId: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  noteId?: string;
+  difficulty: FlashcardDifficulty;
   nextReview: Date;
   reviewCount: number;
   correctCount: number;
@@ -36,6 +43,31 @@ export interface StudySession {
   score: number;
   duration: number;
   completedAt: Date;
+  correctAnswers: number;
+  mode: StudySessionMode;
+}
+
+export interface AppPreferences {
+  autoSaveNotes: boolean;
+  smartFlashcardGeneration: boolean;
+  studyReminders: boolean;
+  flashcardReviewAlerts: boolean;
+  achievementNotifications: boolean;
+  analyticsOptIn: boolean;
+  reminderTime: string;
+  fontSize: FontSize;
+  editorFont: EditorFont;
+}
+
+export interface AppImportData {
+  notes?: Note[];
+  folders?: Folder[];
+  flashcards?: Flashcard[];
+  studySessions?: StudySession[];
+  preferences?: Partial<AppPreferences>;
+  theme?: ThemeMode;
+  exportDate?: string;
+  version?: string;
 }
 
 export interface AppState {
@@ -53,20 +85,25 @@ export interface AppState {
   
   // UI State
   sidebarOpen: boolean;
-  currentView: 'dashboard' | 'notes' | 'flashcards' | 'quiz' | 'settings';
-  theme: 'light' | 'dark';
+  currentView: AppView;
+  theme: ThemeMode;
+  preferences: AppPreferences;
   isLoading: boolean;
   
   // Actions
-  setCurrentView: (view: AppState['currentView']) => void;
+  setCurrentView: (view: AppView) => void;
   toggleSidebar: () => void;
   toggleTheme: () => void;
+  setTheme: (theme: ThemeMode) => void;
+  updatePreferences: (updates: Partial<AppPreferences>) => void;
   setSearchQuery: (query: string) => void;
   setSelectedFolder: (folderId: string | null) => void;
   setSelectedTags: (tags: string[]) => void;
+  toggleTagFilter: (tag: string) => void;
+  resetFilters: () => void;
   
   // Note actions
-  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => Note;
   updateNote: (id: string, updates: Partial<Note>) => void;
   deleteNote: (id: string) => void;
   setCurrentNote: (note: Note | null) => void;
@@ -77,10 +114,14 @@ export interface AppState {
   deleteFolder: (id: string) => void;
   
   // Flashcard actions
-  addFlashcard: (flashcard: Omit<Flashcard, 'id' | 'createdAt' | 'nextReview' | 'reviewCount' | 'correctCount'>) => void;
+  addFlashcard: (flashcard: Omit<Flashcard, 'id' | 'createdAt' | 'nextReview' | 'reviewCount' | 'correctCount'>) => Flashcard;
   updateFlashcard: (id: string, updates: Partial<Flashcard>) => void;
   deleteFlashcard: (id: string) => void;
   
   // Study session actions
-  addStudySession: (session: Omit<StudySession, 'id' | 'completedAt'>) => void;
+  addStudySession: (session: Omit<StudySession, 'id' | 'completedAt'>) => StudySession;
+
+  // Data actions
+  importData: (data: AppImportData) => void;
+  clearAllData: () => void;
 }
