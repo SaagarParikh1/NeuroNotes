@@ -34,9 +34,10 @@ class AIService {
   private apiKey: string | null = null;
   private baseUrl = 'https://api.openai.com/v1';
   private model = 'gpt-4.1-mini';
+  private defaultApiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim() || null;
 
   constructor() {
-    this.apiKey = localStorage.getItem('openai_api_key') || null;
+    this.apiKey = localStorage.getItem('openai_api_key') || this.defaultApiKey;
   }
 
   setApiKey(key: string) {
@@ -49,7 +50,7 @@ class AIService {
   }
 
   removeApiKey() {
-    this.apiKey = null;
+    this.apiKey = this.defaultApiKey;
     localStorage.removeItem('openai_api_key');
   }
 
